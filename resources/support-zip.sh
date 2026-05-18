@@ -75,17 +75,12 @@ AddToFileList ${STATS_DIR}
 
 echo "creating zip file ${ZIP_FULLPATH}" | tee -a ${LOG_FILE}
 sed -i '/^$/d' "${FILE_LIST}" # Removes empty lines
-if [[ "$useZip" = "true" ]]; then
-  echo "Using zip" | tee -a ${LOG_FILE}
-  dnf install zip -y | tee -a ${LOG_FILE}
-  # delete existing zip if it exists
-  rm -f "${ZIP_FULLPATH}" 2>/dev/null || true
-  zip -Xv "${ZIP_FULLPATH}" -@ < "${FILE_LIST}" >> ${LOG_FILE} 2>&1
-  zip -Xv -u "${ZIP_FULLPATH}" "${OUTPUT_DIR}/support-zip.log" >> ${LOG_FILE} 2>&1
-else
-  jar cvfM "${ZIP_FULLPATH}" "@${FILE_LIST}" >> ${LOG_FILE} 2>&1
-  jar -u -v --file="${ZIP_FULLPATH}" "${OUTPUT_DIR}/support-zip.log" >> ${LOG_FILE} 2>&1
-fi
+# Always use jar path for diagnostics archive creation.
+# Installing zip at runtime can add significant overhead and trigger OOM in
+# memory-constrained pods during diagnostics collection.
+rm -f "${ZIP_FULLPATH}" 2>/dev/null || true
+jar cvfM "${ZIP_FULLPATH}" "@${FILE_LIST}" >> ${LOG_FILE} 2>&1
+jar -u -v --file="${ZIP_FULLPATH}" "${OUTPUT_DIR}/support-zip.log" >> ${LOG_FILE} 2>&1
 echo "...end support-zip.sh" | tee -a ${LOG_FILE}
 
 exit 0
