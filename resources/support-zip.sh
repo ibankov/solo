@@ -75,12 +75,17 @@ AddToFileList ${STATS_DIR}
 
 echo "creating zip file ${ZIP_FULLPATH}" | tee -a ${LOG_FILE}
 sed -i '/^$/d' "${FILE_LIST}" # Removes empty lines
-# Always use jar path for diagnostics archive creation.
-# Installing zip at runtime can add significant overhead and trigger OOM in
-# memory-constrained pods during diagnostics collection.
 rm -f "${ZIP_FULLPATH}" 2>/dev/null || true
-jar cvfM "${ZIP_FULLPATH}" "@${FILE_LIST}" >> ${LOG_FILE} 2>&1
-jar -u -v --file="${ZIP_FULLPATH}" "${OUTPUT_DIR}/support-zip.log" >> ${LOG_FILE} 2>&1
+if command -v zip >/dev/null 2>&1; then
+  # Prefer native zip when available for best compatibility with macOS
+  # Archive Utility and other non-Java unzip tools.
+  zip -Xv "${ZIP_FULLPATH}" -@ < "${FILE_LIST}" >> ${LOG_FILE} 2>&1
+  zip -Xv -u "${ZIP_FULLPATH}" "${OUTPUT_DIR}/support-zip.log" >> ${LOG_FILE} 2>&1
+else
+  # Fallback for images that do not provide zip.
+  jar cvfM "${ZIP_FULLPATH}" "@${FILE_LIST}" >> ${LOG_FILE} 2>&1
+  jar -u -v --file="${ZIP_FULLPATH}" "${OUTPUT_DIR}/support-zip.log" >> ${LOG_FILE} 2>&1
+fi
 echo "...end support-zip.sh" | tee -a ${LOG_FILE}
 
 exit 0
